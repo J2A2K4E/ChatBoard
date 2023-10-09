@@ -1,0 +1,34 @@
+// Import required modules
+const express = require('express');
+const bodyParser = require('body-parser');
+
+// Create an instance of the Express application
+const app = express();
+
+// Configure middleware
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+// In-memory storage for chat messages (replace with a database in a production environment)
+let chatMessages = [];
+
+// API endpoint for creating a new chat message
+app.post('/messages', (req, res) => {
+  const { message } = req.body;
+
+  // Store the message in the chatMessages array (or your database)
+  chatMessages.push(message);
+
+  res.status(201).json({ success: true });
+});
+
+// API endpoint for retrieving all chat messages
+app.get('/messages', (req, res) => {
+  res.json({ messages: chatMessages });
+});
+
+// Start the server
+const port = 3000; // Replace with your desired port number
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
