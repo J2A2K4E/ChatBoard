@@ -1,0 +1,34 @@
+document.addEventListener("DOMContentLoaded", function() {
+  var messageContainer = document.getElementById("message-container");
+  var messageInput = document.getElementById("message-input");
+  var sendButton = document.getElementById("send-button");
+
+  sendButton.addEventListener("click", function() {
+    var messageText = messageInput.value;
+    if (messageText.trim() !== "") {
+      var messageElement = document.createElement("div");
+      messageElement.className = "message";
+
+      var userElement = document.createElement("span");
+      userElement.className = "user";
+      userElement.textContent = "User: ";
+      messageElement.appendChild(userElement);
+
+      var contentElement = document.createElement("span");
+      contentElement.className = "content";
+      contentElement.textContent = messageText;
+      messageElement.appendChild(contentElement);
+
+      messageContainer.appendChild(messageElement);
+      messageInput.value = "";
+      messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+  });
+
+  messageInput.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+      sendButton.click();
+      event.preventDefault();
+    }
+  });
+});
