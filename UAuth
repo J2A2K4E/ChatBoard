@@ -1,0 +1,141 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const cors = require('cors');
+
+const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cors());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost/chat_app', { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch((error) => {
+    console.error('Error connecting to MongoDB:', error);
+  });
+
+// Define a schema for users
+const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  role: {
+    type: String,
+    default: 'user'
+  }
+});
+
+// Create a mongoose model based on the schema
+const User = mongoose.model('User', userSchema);
+
+// Route to handle user registration
+app.post('/register', (req, res) => {
+  const { username, password } = req.body;
+
+  // Create a new user document
+  const user = new User({ username, password });
+
+  // Hash the password
+  bcrypt.hash(password, 10, (err, hashedPassword) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: 'Failed to register user' });
+    }
+
+    // Store the hashed password
+    user.password = hashedPassword;
+
+    // Save the user to the database
+    user.save()
+      .then(() => {
+        res.status(201).json({ success: true, message: 'User registered successfully' });
+      })
+      .catch((error) => {
+        res.status(500).json({ success: false, error: 'Failed to register user' });
+      });
+  });
+});
+
+// Route to handle user login
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+
+  // Find the user by username in the database
+  User.findOne({ username })
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      // Compare the provided password with the stored password
+      bcrypt.compare(password, user.password, (err, result) => {
+        if (err) {
+          return res.status(500).json({ success: false, error: 'Failed to authenticate user' });
+        }
+
+        if (result) {
+          // Generate a JWT token
+          const token = jwt.sign({ username: user.username, role: user.role }, 'secret_key');
+
+          // Send the token as a response
+          res.status(200).json({ success: true, token });
+        } else {
+          res.status(401).json({ success: false, error: 'Invalid password' });
+        }
+      });
+    })
+    .catch((error) => {
+      res.status(500).json({ success: false, error: 'Failed to authenticate user' });
+    });
+});
+
+// Middleware to authenticate and authorize requests
+const authenticateUser = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ success: false, error: 'No token provided' });
+  }
+
+  jwt.verify(token, 'secret_key', (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ success: false, error: 'Invalid token' });
+    }
+
+    // Attach the decoded user information to the request object
+    req.user = decoded;
+
+    next();
+  });
+};
+
+// Route to handle an authenticated request
+app.get('/protected', authenticateUser, (req, res) => {
+  // Only allow access to users with the 'admin' role
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Unauthorized access' });
+  }
+
+  res.json({ success: true, message: 'Protected resource accessed' });
+});
+
+// Start the server
+const port = 3000;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
+
+
+
+
+\\\\\
